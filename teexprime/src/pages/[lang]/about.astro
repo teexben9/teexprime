@@ -1,0 +1,35 @@
+---
+import Base from '../../layouts/Base.astro';
+import PageHeader from '../../components/PageHeader.astro';
+import CtaBand from '../../components/CtaBand.astro';
+import { getDictionary, path, staticLocalePaths, type Locale } from '../../i18n/config';
+
+export const getStaticPaths = staticLocalePaths;
+const lang = Astro.params.lang as Locale;
+const t = getDictionary(lang);
+---
+<Base lang={lang} title={t.about.title} description={t.about.lead}>
+  <PageHeader eyebrow={t.nav.about} title={t.about.title} lead={t.about.lead} />
+  <section class="container-x grid gap-12 pb-20 sm:pb-28 lg:grid-cols-[1fr_1.4fr]">
+    <div></div>
+    <div class="space-y-6 text-lg leading-relaxed text-ink-2">
+      {t.about.paragraphs.map((p) => <p data-reveal>{p}</p>)}
+    </div>
+  </section>
+  <section class="section border-t border-line bg-surface">
+    <div class="container-x">
+      <h2 class="h-section" data-reveal>{t.about.valuesTitle}</h2>
+      <div class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {t.about.values.map((v, i) => (
+          <div class="card bg-bg p-7" data-reveal style={`--reveal-delay:${i * 70}ms`}>
+            <span class="block h-1 w-8 rounded-full bg-accent"></span>
+            <h3 class="mt-6 text-xl font-semibold">{v.title}</h3>
+            <p class="mt-2 leading-relaxed text-ink-2">{v.text}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+  <div class="pt-20 sm:pt-28"></div>
+  <CtaBand title={t.home.ctaTitle} lead={t.home.ctaLead} href={path(lang, 'start')} label={t.common.startProject} />
+</Base>

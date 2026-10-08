@@ -1,0 +1,115 @@
+---
+import Logo from './Logo.astro';
+import Button from './Button.astro';
+import ThemeToggle from './ThemeToggle.astro';
+import LanguageSwitcher from './LanguageSwitcher.astro';
+import { getDictionary, path, type Locale } from '../i18n/config';
+interface Props { lang: Locale }
+const { lang } = Astro.props;
+const t = getDictionary(lang);
+const links = [
+  { slug: '', label: t.nav.home },
+  { slug: 'work', label: t.nav.work },
+  { slug: 'services', label: t.nav.services },
+  { slug: 'process', label: t.nav.process },
+  { slug: 'about', label: t.nav.about },
+];
+const here = Astro.url.pathname;
+const isActive = (slug: string) => {
+  const p = path(lang, slug);
+  return slug ? here.startsWith(p) : here === p;
+};
+---
+<header class="sticky top-0 z-40 border-b border-transparent bg-bg/80 backdrop-blur-xl transition-colors" data-header>
+  <div class="container-x flex h-16 items-center justify-between gap-4 sm:h-18">
+    <a href={path(lang)} class="shrink-0"><Logo /></a>
+
+    <nav aria-label="Main" class="hidden lg:block">
+      <ul class="flex items-center gap-1">
+        {links.slice(1).map((l) => (
+          <li>
+            <a href={path(lang, l.slug)} aria-current={isActive(l.slug) ? 'page' : undefined}
+              class:list={['rounded-full px-4 py-2 text-sm font-medium transition-colors hover:text-ink',
+                isActive(l.slug) ? 'text-ink' : 'text-muted']}>
+              {l.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+
+    <div class="flex items-center gap-1">
+      <LanguageSwitcher lang={lang} label={t.nav.language} />
+      <ThemeToggle label={t.nav.theme} />
+      <span class="ms-2 hidden sm:block"><Button href={path(lang, 'start')}>{t.nav.start}</Button></span>
+      <button type="button" class="grid size-10 place-items-center rounded-full hover:bg-surface-2 lg:hidden"
+        data-menu-open aria-label={t.nav.menu} aria-expanded="false" aria-controls="mobile-menu">
+        <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <path d="M4 8h16M4 16h16" stroke-linecap="round" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="mobile-menu" class="fixed inset-0 z-50 hidden flex-col bg-bg lg:hidden" data-menu>
+    <div class="container-x flex h-16 items-center justify-between">
+      <a href={path(lang)}><Logo /></a>
+      <button type="button" class="grid size-10 place-items-center rounded-full hover:bg-surface-2" data-menu-close aria-label={t.nav.close}>
+        <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+        </svg>
+      </button>
+    </div>
+    <nav aria-label="Mobile" class="container-x flex flex-1 flex-col justify-between pb-10 pt-6">
+      <ul class="space-y-1">
+        {links.map((l, i) => (
+          <li class="animate-in" style={`--delay:${i * 40}ms`}>
+            <a href={path(lang, l.slug)} aria-current={isActive(l.slug) ? 'page' : undefined}
+              class="block py-2.5 font-display text-4xl font-semibold tracking-tight aria-[current=page]:text-accent-ink">
+              {l.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+      <Button href={path(lang, 'start')} size="lg" class="w-full">{t.nav.start}</Button>
+    </nav>
+  </div>
+</header>
+
+<script>
+  const menu = document.querySelector<HTMLElement>('[data-menu]');
+  const openBtn = document.querySelector<HTMLButtonElement>('[data-menu-open]');
+  const closeBtn = document.querySelector<HTMLButtonElement>('[data-menu-close]');
+  const setOpen = (open: boolean) => {
+    if (!menu || !openBtn) return;
+    menu.classList.toggle('hidden', !open);
+    menu.classList.toggle('flex', open);
+    openBtn.setAttribute('aria-expanded', String(open));
+    document.documentElement.style.overflow = open ? 'hidden' : '';
+    (open ? closeBtn : openBtn)?.focus();
+  };
+  openBtn?.addEventListener('click', () => setOpen(true));
+  closeBtn?.addEventListener('click', () => setOpen(false));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && menu && !menu.classList.contains('hidden')) setOpen(false);
+  });
+
+  // Add a border to the header once the page has scrolled.
+  const header = document.querySelector<HTMLElement>('[data-header]');
+  const onScroll = () => header?.classList.toggle('border-line', window.scrollY > 8);
+  onScroll();
+  window.addEventListener('scroll', onScroll, { passive: true });
+
+  // Close the language menu when clicking elsewhere.
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll<HTMLDetailsElement>('[data-lang-menu][open]').forEach((d) => {
+      if (!d.contains(e.target as Node)) d.open = false;
+    });
+  });
+  // Remember the chosen language for the next visit to the root address.
+  document.querySelectorAll<HTMLAnchorElement>('[data-set-lang]').forEach((a) =>
+    a.addEventListener('click', () => {
+      try { localStorage.setItem('teexprime-lang', a.dataset.setLang || 'en'); } catch {}
+    }),
+  );
+</script>

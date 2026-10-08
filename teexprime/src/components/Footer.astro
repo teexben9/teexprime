@@ -1,0 +1,39 @@
+---
+import Logo from './Logo.astro';
+import { getDictionary, path, type Locale } from '../i18n/config';
+import { site, whatsappLink } from '../lib/site';
+interface Props { lang: Locale }
+const { lang } = Astro.props;
+const t = getDictionary(lang);
+const year = new Date().getFullYear();
+const wa = whatsappLink();
+---
+<footer class="border-t border-line">
+  <div class="container-x grid gap-12 py-16 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="lg:col-span-2">
+      <Logo />
+      <p class="mt-4 max-w-sm text-sm leading-relaxed text-muted">{t.footer.tagline}</p>
+    </div>
+    <div>
+      <h2 class="text-sm font-semibold">{t.footer.explore}</h2>
+      <ul class="mt-4 space-y-2.5 text-sm text-muted">
+        <li><a class="hover:text-ink" href={path(lang, 'work')}>{t.nav.work}</a></li>
+        <li><a class="hover:text-ink" href={path(lang, 'services')}>{t.nav.services}</a></li>
+        <li><a class="hover:text-ink" href={path(lang, 'process')}>{t.nav.process}</a></li>
+        <li><a class="hover:text-ink" href={path(lang, 'about')}>{t.nav.about}</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="text-sm font-semibold">{t.footer.contact}</h2>
+      <ul class="mt-4 space-y-2.5 text-sm text-muted">
+        <li><a class="hover:text-ink" href={path(lang, 'start')}>{t.nav.start}</a></li>
+        {wa && <li><a class="hover:text-ink" href={wa} target="_blank" rel="noopener">{t.common.whatsapp}</a></li>}
+        {site.email && <li><a class="hover:text-ink" href={`mailto:${site.email}`}>{site.email}</a></li>}
+        {site.location && <li>{site.location}</li>}
+      </ul>
+    </div>
+  </div>
+  <div class="container-x flex flex-col gap-2 border-t border-line py-6 text-xs text-muted sm:flex-row sm:justify-between">
+    <p>© {year} {site.name}. {t.footer.rights}</p>
+  </div>
+</footer>

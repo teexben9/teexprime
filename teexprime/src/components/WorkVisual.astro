@@ -1,0 +1,19 @@
+---
+// Shows the first case study image, or a clean placeholder panel until screenshots are added.
+interface Props { client: string; image?: { src: string; alt: string }; label?: string; class?: string }
+const { client, image, label, class: className = '' } = Astro.props;
+const initials = client.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+---
+<div class:list={['relative overflow-hidden rounded-xl bg-surface-2', className]}>
+  {image ? (
+    <img src={image.src} alt={image.alt} loading="lazy" class="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
+  ) : (
+    <div class="absolute inset-0 grid place-items-center">
+      <div class="absolute inset-x-6 top-6 flex gap-1.5" aria-hidden="true">
+        <span class="size-2 rounded-full bg-line"></span><span class="size-2 rounded-full bg-line"></span><span class="size-2 rounded-full bg-line"></span>
+      </div>
+      <span class="font-display text-6xl font-semibold tracking-tight text-ink/10 transition-transform duration-700 group-hover:scale-105" aria-hidden="true">{initials}</span>
+      {label && <span class="absolute bottom-4 start-4 rounded-full bg-surface px-3 py-1 text-xs text-muted">{label}</span>}
+    </div>
+  )}
+</div>

@@ -1,0 +1,438 @@
+---
+import Base from '../../layouts/Base.astro';
+import Button from '../../components/Button.astro';
+import Arrow from '../../components/Arrow.astro';
+import { getDictionary, staticLocalePaths, type Locale } from '../../i18n/config';
+import { questions } from '../../lib/diagnostic';
+import { site, whatsappLink } from '../../lib/site';
+
+export const getStaticPaths = staticLocalePaths;
+const lang = Astro.params.lang as Locale;
+const t = getDictionary(lang);
+const en = getDictionary('en');
+const s = t.start;
+const c = s.contact;
+type QKey = keyof typeof s.questions;
+const q = (id: string) => s.questions[id as QKey] as { title: string; hint?: string; options: Record<string, string> };
+
+// Everything the browser script needs: translated messages, plus English labels for the email you receive.
+const clientData = {
+  lang,
+  messages: {
+    step: s.step, required: s.required, sending: s.sending, submit: s.submit,
+    notConfigured: s.notConfigured, errors: c.errors,
+  },
+  en: {
+    questions: Object.fromEntries(
+      Object.entries(en.start.questions).map(([id, v]) => [id, { title: v.title, options: v.options }]),
+    ),
+    preferred: en.start.contact.preferredOptions,
+    decision: en.start.contact.decisionOptions,
+  },
+};
+const wa = whatsappLink();
+// The website question and its follow-up share one screen.
+const screens = ['industry', 'find', 'learn', 'problem', 'after', 'hasWebsite', 'goal', 'timeline', 'budget'];
+const total = screens.length + 1;
+---
+<Base lang={lang} title={t.nav.start} description={s.lead}>
+  <section class="container-x max-w-3xl pb-24 pt-12 sm:pt-20">
+    <form id="diagnostic" novalidate class="relative scroll-mt-24" data-total={total}>
+      <script type="application/json" id="dx-data" set:html={JSON.stringify(clientData)} />
+      <input type="checkbox" name="botcheck" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true" />
+
+      <!-- Progress -->
+      <div class="mb-10 hidden" data-progress>
+        <div class="flex items-center justify-between text-sm text-muted">
+          <span data-progress-text></span>
+          <button type="button" class="group inline-flex items-center gap-1.5 hover:text-ink" data-back>
+            <span class="rotate-180"><Arrow /></span>{s.back}
+          </button>
+        </div>
+        <div class="mt-3 h-1 overflow-hidden rounded-full bg-surface-2">
+          <div class="h-full w-0 rounded-full bg-accent-ink transition-all duration-500 ease-out" data-progress-bar></div>
+        </div>
+      </div>
+
+      <!-- Intro -->
+      <div data-step="0" class="step">
+        <p class="eyebrow animate-in">{t.nav.start}</p>
+        <h1 class="h-display mt-4 animate-in" style="--delay:60ms">{s.title}</h1>
+        <p class="lead mt-6 animate-in" style="--delay:120ms">{s.lead}</p>
+        <p class="mt-4 text-sm text-muted animate-in" style="--delay:160ms">{s.meta}</p>
+        <div class="mt-10 animate-in" style="--delay:200ms">
+          <Button size="lg" data-next>{s.begin} <Arrow /></Button>
+        </div>
+        {(wa || site.email) && (
+          <p class="mt-10 text-sm text-muted">
+            {s.preferTalk}{' '}
+            {wa && <a class="link" href={wa} target="_blank" rel="noopener">{t.common.whatsapp}</a>}
+            {wa && site.email && ' · '}
+            {site.email && <a class="link" href={`mailto:${site.email}`}>{site.email}</a>}
+          </p>
+        )}
+      </div>
+
+      <!-- Question screens -->
+      {screens.map((id, i) => {
+        const def = questions.find((x) => x.id === id)!;
+        const text = q(id);
+        const improve = q('improve');
+        const improveDef = questions.find((x) => x.id === 'improve')!;
+        return (
+          <fieldset data-step={i + 1} data-question={id} class="step hidden">
+            <legend class="contents">
+              <h2 class="text-3xl font-semibold leading-tight sm:text-4xl" tabindex="-1" data-step-heading>{text.title}</h2>
+            </legend>
+            <p class="mt-3 text-muted">{text.hint ?? (def.multiple ? s.chooseAny : s.chooseOne)}</p>
+            <div class="mt-8 grid gap-3 sm:grid-cols-2">
+              {Object.keys(def.options).map((opt) => (
+                <label class="group flex cursor-pointer items-center gap-4 rounded-xl border border-line bg-surface px-5 py-4 transition-all hover:border-ink/40 has-checked:border-accent-ink has-checked:bg-accent-soft has-focus-visible:ring-2 has-focus-visible:ring-accent-ink">
+                  <input type={def.multiple ? 'checkbox' : 'radio'} name={id} value={opt} class="peer sr-only" />
+                  <span class:list={['grid size-5 shrink-0 place-items-center border border-line transition-colors peer-checked:border-accent-ink peer-checked:bg-accent-ink',
+                    def.multiple ? 'rounded-md' : 'rounded-full']} aria-hidden="true">
+                    <svg viewBox="0 0 20 20" class="size-3.5 text-bg opacity-0 group-has-checked:opacity-100" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 10.5l4 4 8-9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                  </span>
+                  <span class="font-medium">{text.options[opt]}</span>
+                </label>
+              ))}
+            </div>
+            {'other' in def.options && (
+              <input type="text" name={`${id}_other`} placeholder={s.otherPlaceholder} maxlength="300"
+                class="mt-3 hidden h-12 w-full rounded-xl border border-line bg-surface px-4 outline-none transition-colors focus:border-accent-ink" data-other-for={id} />
+            )}
+            {id === 'hasWebsite' && (
+              <div class="mt-12 hidden" data-improve>
+                <h3 class="text-2xl font-semibold">{improve.title}</h3>
+                <p class="mt-2 text-muted">{s.chooseAny}</p>
+                <div class="mt-6 grid gap-3 sm:grid-cols-2">
+                  {Object.keys(improveDef.options).map((opt) => (
+                    <label class="group flex cursor-pointer items-center gap-4 rounded-xl border border-line bg-surface px-5 py-4 transition-all hover:border-ink/40 has-checked:border-accent-ink has-checked:bg-accent-soft has-focus-visible:ring-2 has-focus-visible:ring-accent-ink">
+                      <input type="checkbox" name="improve" value={opt} class="peer sr-only" />
+                      <span class="grid size-5 shrink-0 place-items-center rounded-md border border-line transition-colors peer-checked:border-accent-ink peer-checked:bg-accent-ink" aria-hidden="true">
+                        <svg viewBox="0 0 20 20" class="size-3.5 text-bg opacity-0 group-has-checked:opacity-100" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 10.5l4 4 8-9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                      </span>
+                      <span class="font-medium">{improve.options[opt]}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            <p class="mt-4 hidden text-sm font-medium text-danger" role="alert" data-error></p>
+            <div class="mt-10"><Button size="lg" data-next>{s.next} <Arrow /></Button></div>
+          </fieldset>
+        );
+      })}
+
+      <!-- Contact details -->
+      <fieldset data-step={total} data-question="contact" class="step hidden">
+        <legend class="contents">
+          <h2 class="text-3xl font-semibold leading-tight sm:text-4xl" tabindex="-1" data-step-heading>{c.title}</h2>
+        </legend>
+        <div class="mt-8 grid gap-5 sm:grid-cols-2">
+          {[
+            { name: 'name', label: c.name, type: 'text', auto: 'name', required: true },
+            { name: 'business', label: c.business, type: 'text', auto: 'organization', required: true },
+            { name: 'email', label: c.email, type: 'email', auto: 'email' },
+            { name: 'phone', label: c.phone, type: 'tel', auto: 'tel' },
+            { name: 'location', label: c.location, type: 'text', auto: 'address-level2' },
+          ].map((f) => f as typeof f & { type: 'text' | 'email' | 'tel'; required?: boolean }).map((f) => (
+            <div>
+              <label for={`f-${f.name}`} class="text-sm font-medium">{f.label}{f.required && <span class="text-accent-ink"> *</span>}</label>
+              <input id={`f-${f.name}`} name={f.name} type={f.type} autocomplete={f.auto} maxlength="200" required={f.required}
+                class="mt-2 h-12 w-full rounded-xl border border-line bg-surface px-4 outline-none transition-colors focus:border-accent-ink aria-invalid:border-danger" />
+              <p class="mt-1.5 hidden text-sm text-danger" data-field-error={f.name}></p>
+            </div>
+          ))}
+          <div class="hidden" data-website-field>
+            <label for="f-website" class="text-sm font-medium">{c.website}</label>
+            <input id="f-website" name="website" type="url" inputmode="url" placeholder={c.websitePlaceholder} maxlength="200"
+              class="mt-2 h-12 w-full rounded-xl border border-line bg-surface px-4 outline-none transition-colors focus:border-accent-ink" />
+          </div>
+          <div class="sm:col-span-2">
+            <label for="f-social" class="text-sm font-medium">{c.social}</label>
+            <input id="f-social" name="social" type="text" maxlength="400"
+              class="mt-2 h-12 w-full rounded-xl border border-line bg-surface px-4 outline-none transition-colors focus:border-accent-ink" />
+          </div>
+        </div>
+        <p class="mt-3 hidden text-sm text-danger" data-field-error="contactOne"></p>
+
+        {[
+          { name: 'preferred', label: c.preferred, options: c.preferredOptions },
+          { name: 'decision', label: c.decision, options: c.decisionOptions },
+        ].map((g) => (
+          <div class="mt-8">
+            <p class="text-sm font-medium">{g.label}</p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              {Object.entries(g.options).map(([value, label]) => (
+                <label class="cursor-pointer rounded-full border border-line px-4 py-2 text-sm transition-colors hover:border-ink/40 has-checked:border-accent-ink has-checked:bg-accent-soft has-checked:text-accent-ink has-focus-visible:ring-2 has-focus-visible:ring-accent-ink">
+                  <input type="radio" name={g.name} value={value} class="sr-only" />{label}
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        <div class="mt-8">
+          <label for="f-notes" class="text-sm font-medium">{c.notes}</label>
+          <textarea id="f-notes" name="notes" rows="4" maxlength="2000"
+            class="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-3 outline-none transition-colors focus:border-accent-ink"></textarea>
+        </div>
+
+        <div class="mt-8 hidden rounded-xl border border-danger/40 p-5" role="alert" data-submit-error>
+          <p class="font-semibold text-danger">{s.errorTitle}</p>
+          <p class="mt-1 text-sm text-ink-2" data-submit-error-text>{s.errorText}</p>
+        </div>
+        <p class="mt-6 text-sm text-muted">{s.saved}</p>
+        <div class="mt-6"><Button size="lg" type="submit" data-submit>{s.submit} <Arrow /></Button></div>
+      </fieldset>
+
+      <!-- Success -->
+      <div data-step={total + 1} class="step hidden" role="status">
+        <div class="grid size-14 place-items-center rounded-full bg-accent text-on-accent">
+          <svg viewBox="0 0 20 20" class="size-7" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M4 10.5l4 4 8-9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </div>
+        <h2 class="mt-8 text-3xl font-semibold leading-tight sm:text-5xl" tabindex="-1" data-step-heading>{s.successTitle}</h2>
+        <p class="lead mt-6">{s.successText}</p>
+        <div class="card mt-10 inline-flex flex-col px-6 py-4">
+          <span class="text-sm text-muted">{s.referenceLabel}</span>
+          <span class="mt-1 font-mono text-xl font-semibold tracking-wide" data-reference></span>
+        </div>
+        <div class="mt-10"><Button variant="secondary" data-restart>{s.startOver}</Button></div>
+      </div>
+    </form>
+  </section>
+</Base>
+
+<script>
+  import { diagnose, makeReference, categoryLabels, type Answers } from '../../lib/diagnostic';
+
+  const STORAGE = 'teexprime-diagnostic';
+  const ENDPOINT = 'https://api.web3forms.com/submit';
+  const KEY = import.meta.env.PUBLIC_WEB3FORMS_KEY as string | undefined;
+
+  const form = document.getElementById('diagnostic') as HTMLFormElement;
+  const data = JSON.parse(document.getElementById('dx-data')!.textContent!);
+  const m = data.messages;
+  const total = Number(form.dataset.total);
+  const steps = [...form.querySelectorAll<HTMLElement>('.step')];
+  let current = 0;
+
+  const $ = <T extends Element>(sel: string, root: ParentNode = form) => root.querySelector<T>(sel);
+  const values = (name: string) =>
+    [...form.querySelectorAll<HTMLInputElement>(`input[name="${name}"]:checked`)].map((i) => i.value);
+  const field = (name: string) => (form.elements.namedItem(name) as HTMLInputElement | null)?.value.trim() ?? '';
+
+  // ---------- Save and restore answers on this device ----------
+  const save = () => {
+    const state: Record<string, unknown> = { step: current };
+    for (const el of form.elements as unknown as HTMLInputElement[]) {
+      if (!el.name || el.name === 'botcheck') continue;
+      if (el.type === 'checkbox' || el.type === 'radio') {
+        if (el.checked) (state[el.name] = (state[el.name] as string[] | undefined) ?? []), (state[el.name] as string[]).push(el.value);
+      } else state[el.name] = el.value;
+    }
+    try { localStorage.setItem(STORAGE, JSON.stringify(state)); } catch {}
+  };
+  const restore = () => {
+    let state: Record<string, unknown> | null = null;
+    try { state = JSON.parse(localStorage.getItem(STORAGE) || 'null'); } catch {}
+    if (!state) return 0;
+    for (const el of form.elements as unknown as HTMLInputElement[]) {
+      if (!el.name || !(el.name in state)) continue;
+      const v = state[el.name];
+      if (el.type === 'checkbox' || el.type === 'radio') el.checked = Array.isArray(v) && v.includes(el.value);
+      else el.value = String(v ?? '');
+    }
+    const step = Number(state.step) || 0;
+    return step > total ? 0 : step;
+  };
+
+  // ---------- Conditional fields ----------
+  const syncConditional = () => {
+    form.querySelectorAll<HTMLInputElement>('[data-other-for]').forEach((input) => {
+      const show = values(input.dataset.otherFor!).includes('other');
+      input.classList.toggle('hidden', !show);
+    });
+    const hasSite = values('hasWebsite')[0] === 'yes';
+    $('[data-improve]')?.classList.toggle('hidden', !hasSite);
+    $('[data-website-field]')?.classList.toggle('hidden', !hasSite);
+  };
+
+  // ---------- Navigation ----------
+  const show = (index: number, focus = true) => {
+    current = index;
+    steps.forEach((el) => el.classList.toggle('hidden', Number(el.dataset.step) !== index));
+    const progress = $<HTMLElement>('[data-progress]')!;
+    const inQuestions = index >= 1 && index <= total;
+    progress.classList.toggle('hidden', !inQuestions);
+    if (inQuestions) {
+      $('[data-progress-text]')!.textContent = m.step.replace('{current}', index).replace('{total}', total);
+      $<HTMLElement>('[data-progress-bar]')!.style.width = `${(index / total) * 100}%`;
+    }
+    const active = steps.find((el) => Number(el.dataset.step) === index)!;
+    active.classList.remove('animate-in');
+    void active.offsetWidth;
+    active.classList.add('animate-in');
+    if (focus) {
+      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      $<HTMLElement>('[data-step-heading]', active)?.focus({ preventScroll: true });
+    }
+    if (index <= total) save();
+  };
+
+  const validateQuestion = (step: HTMLElement) => {
+    const id = step.dataset.question!;
+    const error = $<HTMLElement>('[data-error]', step);
+    const ok = values(id).length > 0;
+    if (error) { error.textContent = ok ? '' : m.required; error.classList.toggle('hidden', ok); }
+    return ok;
+  };
+
+  const setFieldError = (name: string, message: string) => {
+    const el = $<HTMLElement>(`[data-field-error="${name}"]`);
+    const input = form.elements.namedItem(name) as HTMLInputElement | null;
+    if (el) { el.textContent = message; el.classList.toggle('hidden', !message); }
+    input?.setAttribute('aria-invalid', message ? 'true' : 'false');
+  };
+
+  const validateContact = () => {
+    const e = m.errors;
+    const email = field('email');
+    const phone = field('phone');
+    const checks: [string, string][] = [
+      ['name', field('name') ? '' : e.name],
+      ['business', field('business') ? '' : e.business],
+      ['email', email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? e.email : ''],
+      ['phone', phone && phone.replace(/\D/g, '').length < 7 ? e.phone : ''],
+      ['contactOne', !email && !phone ? e.contactOne : ''],
+    ];
+    checks.forEach(([n, msg]) => setFieldError(n, msg));
+    const first = checks.find(([, msg]) => msg);
+    if (first) (form.elements.namedItem(first[0] === 'contactOne' ? 'email' : first[0]) as HTMLElement | null)?.focus();
+    return !first;
+  };
+
+  form.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-next]')) {
+      e.preventDefault();
+      const step = steps.find((el) => Number(el.dataset.step) === current)!;
+      if (step.dataset.question && !validateQuestion(step)) return;
+      show(current + 1);
+    } else if (target.closest('[data-back]')) {
+      show(Math.max(0, current - 1));
+    } else if (target.closest('[data-restart]')) {
+      form.reset();
+      try { localStorage.removeItem(STORAGE); } catch {}
+      syncConditional();
+      show(0);
+    }
+  });
+
+  form.addEventListener('change', (e) => {
+    syncConditional();
+    const step = (e.target as HTMLElement).closest<HTMLElement>('[data-question]');
+    if (step && step.dataset.question !== 'contact') {
+      const err = $<HTMLElement>('[data-error]', step);
+      if (err && values(step.dataset.question!).length) err.classList.add('hidden');
+    }
+    save();
+  });
+  form.addEventListener('input', save);
+
+  // ---------- Submit ----------
+  const en = data.en;
+  const label = (id: string, value: string) => en.questions[id]?.options[value] ?? value;
+  const list = (id: string) => {
+    const chosen = values(id).map((v) => label(id, v));
+    const other = field(`${id}_other`);
+    return [...chosen, other && `Other: ${other}`].filter(Boolean).join(', ') || '-';
+  };
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!validateContact()) return;
+    const errorBox = $<HTMLElement>('[data-submit-error]')!;
+    const errorText = $<HTMLElement>('[data-submit-error-text]')!;
+    const button = $<HTMLButtonElement>('[data-submit]')!;
+    errorBox.classList.add('hidden');
+
+    if ((form.elements.namedItem('botcheck') as HTMLInputElement).checked) return;
+    if (!KEY) {
+      errorText.textContent = m.notConfigured;
+      errorBox.classList.remove('hidden');
+      return;
+    }
+
+    const answers: Answers = {};
+    for (const id of ['industry', 'find', 'learn', 'problem', 'after', 'hasWebsite', 'improve', 'goal', 'timeline', 'budget']) answers[id] = values(id);
+    const decision = values('decision')[0];
+    const dx = diagnose(answers, decision);
+    const reference = makeReference();
+    const hasSite = answers.hasWebsite[0] === 'yes';
+    const business = field('business');
+    const industry = label('industry', answers.industry[0]);
+
+    const payload: Record<string, string> = {
+      access_key: KEY,
+      subject: `New project: ${business} · ${industry} · ${categoryLabels[dx.primary]} · Score ${dx.leadScore}/10`,
+      from_name: 'Teexprime website',
+      Reference: reference,
+      'Lead status': dx.leadStatus,
+      'Lead score': `${dx.leadScore}/10`,
+      'Primary problem': categoryLabels[dx.primary],
+      'Secondary problem': dx.secondary ? categoryLabels[dx.secondary] : '-',
+      'Suggested solution': dx.recommendation,
+      Name: field('name'),
+      Business: business,
+      Industry: list('industry'),
+      Location: field('location') || '-',
+      'Phone / WhatsApp': field('phone') || '-',
+      'Preferred contact': en.preferred[values('preferred')[0]] ?? '-',
+      'Decision maker': en.decision[decision] ?? '-',
+      'Has website': label('hasWebsite', answers.hasWebsite[0]),
+      'Website address': hasSite ? field('website') || '-' : '-',
+      'Wants to improve': hasSite ? list('improve') : '-',
+      'Social links': field('social') || '-',
+      'How customers find them': list('find'),
+      'When people want to learn more': list('learn'),
+      'Familiar problems': list('problem'),
+      'After someone is interested': list('after'),
+      Goals: list('goal'),
+      Timeline: list('timeline'),
+      Budget: list('budget'),
+      Notes: field('notes') || '-',
+      'Site language': data.lang,
+      'Category scores': Object.entries(dx.scores).map(([k, v]) => `${categoryLabels[k as keyof typeof categoryLabels]} ${v}`).join(', '),
+    };
+
+    if (field('email')) payload.email = field('email');
+
+    button.disabled = true;
+    const original = button.innerHTML;
+    button.textContent = m.sending;
+    try {
+      const res = await fetch(ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.success === false) throw new Error(json.message || res.statusText);
+      $('[data-reference]')!.textContent = reference;
+      try { localStorage.removeItem(STORAGE); } catch {}
+      show(total + 1);
+    } catch {
+      errorBox.classList.remove('hidden');
+    } finally {
+      button.disabled = false;
+      button.innerHTML = original;
+    }
+  });
+
+  // ---------- Start ----------
+  const startAt = restore();
+  syncConditional();
+  show(startAt, false);
+</script>

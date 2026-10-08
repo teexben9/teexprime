@@ -1,0 +1,27 @@
+---
+import { locales, localeNames, switchLocalePath, type Locale } from '../i18n/config';
+interface Props { lang: Locale; label: string }
+const { lang, label } = Astro.props;
+const current = Astro.url.pathname;
+---
+<details class="group relative" data-lang-menu>
+  <summary aria-label={label}
+    class="flex h-10 cursor-pointer list-none items-center gap-1.5 rounded-full px-3 text-sm font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink [&::-webkit-details-marker]:hidden">
+    <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+    </svg>
+    <span class="uppercase">{lang}</span>
+  </summary>
+  <ul class="absolute end-0 z-50 mt-2 w-40 origin-top-right rounded-xl border border-line bg-surface p-1.5 shadow-xl shadow-black/5">
+    {locales.map((l: Locale) => (
+      <li>
+        <a href={switchLocalePath(current, l)} hreflang={l} lang={l} data-set-lang={l}
+          aria-current={l === lang ? 'true' : undefined}
+          class:list={['flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors hover:bg-surface-2', l === lang && 'font-semibold']}>
+          {localeNames[l]}
+          {l === lang && <span class="size-1.5 rounded-full bg-accent-ink" aria-hidden="true" />}
+        </a>
+      </li>
+    ))}
+  </ul>
+</details>

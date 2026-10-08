@@ -1,0 +1,88 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Button from '../../../components/Button.astro';
+import Arrow from '../../../components/Arrow.astro';
+import StatusBadge from '../../../components/StatusBadge.astro';
+import WorkVisual from '../../../components/WorkVisual.astro';
+import CtaBand from '../../../components/CtaBand.astro';
+import { getDictionary, locales, path, type Locale } from '../../../i18n/config';
+import { getWork } from '../../../lib/work';
+
+export async function getStaticPaths() {
+  const work = await getWork();
+  return locales.flatMap((lang) => work.map((entry) => ({ params: { lang, slug: entry.id }, props: { entry } })));
+}
+const { entry } = Astro.props;
+const lang = Astro.params.lang as Locale;
+const t = getDictionary(lang);
+const L = t.work.labels;
+const d = entry.data;
+const story = [
+  { label: L.problem, text: d.problem },
+  { label: L.approach, text: d.approach },
+  { label: L.solution, text: d.solution },
+];
+---
+<Base lang={lang} title={d.client} description={d.summary}>
+  <article>
+    <header class="container-x pb-12 pt-12 sm:pt-20">
+      <a href={path(lang, 'work')} class="group inline-flex items-center gap-2 text-sm text-muted hover:text-ink animate-in">
+        <span class="rotate-180"><Arrow /></span> {L.back}
+      </a>
+      <div class="mt-8 flex flex-wrap items-center gap-2 animate-in" style="--delay:60ms">
+        <StatusBadge tone="accent">{d.industry}</StatusBadge>
+        {d.url && <StatusBadge tone="success">{L.live}</StatusBadge>}
+      </div>
+      <h1 class="h-display mt-5 max-w-4xl animate-in" style="--delay:120ms">{d.client}</h1>
+      <p class="lead mt-6 max-w-2xl animate-in" style="--delay:180ms">{d.summary}</p>
+      {lang !== 'en' && <p class="mt-4 text-sm text-muted">{t.common.englishOnly}</p>}
+      <dl class="mt-10 grid max-w-xl grid-cols-2 gap-6 border-t border-line pt-6 text-sm animate-in" style="--delay:240ms">
+        <div><dt class="text-muted">{L.client}</dt><dd class="mt-1 font-medium">{d.client}</dd></div>
+        <div><dt class="text-muted">{L.industry}</dt><dd class="mt-1 font-medium">{d.industry}</dd></div>
+      </dl>
+    </header>
+
+    <div class="container-x" data-reveal>
+      <WorkVisual client={d.client} image={d.images[0]} label={L.screenshotsSoon} class="aspect-[16/9] border border-line" />
+    </div>
+
+    <section class="container-x grid gap-12 py-20 sm:py-28 lg:grid-cols-[1fr_2fr]">
+      <div class="space-y-14 lg:col-start-2">
+        {story.map((s) => (
+          <div data-reveal>
+            <h2 class="eyebrow">{s.label}</h2>
+            <p class="mt-4 text-2xl leading-snug font-display font-medium sm:text-3xl">{s.text}</p>
+          </div>
+        ))}
+        <div data-reveal>
+          <h2 class="eyebrow">{L.features}</h2>
+          <ul class="mt-6 grid gap-3 sm:grid-cols-2">
+            {d.features.map((f) => (
+              <li class="card flex items-center gap-3 px-5 py-4">
+                <svg viewBox="0 0 20 20" class="size-5 shrink-0 text-accent-ink" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 10.5l4 4 8-9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                {f}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div class="rounded-2xl bg-accent-soft p-8" data-reveal>
+          <h2 class="eyebrow">{L.outcome}</h2>
+          <p class="mt-4 text-xl leading-relaxed">{d.outcome}</p>
+        </div>
+        {d.url && (
+          <div data-reveal><Button href={d.url} target="_blank" rel="noopener" variant="secondary">{L.visit} <Arrow /></Button></div>
+        )}
+      </div>
+    </section>
+
+    {d.images.length > 1 && (
+      <section class="container-x grid gap-6 pb-20 sm:grid-cols-2">
+        <h2 class="sr-only">{L.visuals}</h2>
+        {d.images.slice(1).map((img) => (
+          <img src={img.src} alt={img.alt} loading="lazy" class="w-full rounded-2xl border border-line" data-reveal />
+        ))}
+      </section>
+    )}
+  </article>
+  <CtaBand title={t.work.nextTitle} lead={t.home.ctaLead} href={path(lang, 'start')} label={t.common.startProject} />
+</Base>
